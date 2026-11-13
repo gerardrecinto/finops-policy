@@ -1,0 +1,22 @@
+# Same tagging rule as policy/cost.rego, for HCP Terraform / Terraform Enterprise.
+import "tfplan/v2" as tfplan
+
+required_tags = ["owner", "cost-center"]
+
+instances = filter tfplan.resource_changes as _, rc {
+	rc.type is "aws_instance" and
+	(rc.change.actions contains "create" or rc.change.actions contains "update")
+}
+
+has_tags = func(rc) {
+	tags = rc.change.after.tags else {}
+	return all required_tags as t {
+		tags contains t
+	}
+}
+
+main = rule {
+	all instances as _, rc {
+		has_tags(rc)
+	}
+}
